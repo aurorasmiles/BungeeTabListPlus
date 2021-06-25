@@ -1,0 +1,4 @@
+name: BungeeTabListPlus
+main : codecrafter47.bungeetablistplus.BungeePlugin
+version: ${version}
+author: CodeCrafter47

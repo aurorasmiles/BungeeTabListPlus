@@ -1,0 +1,13 @@
+name: BungeeTabListPlus
+main : codecrafter47.bungeetablistplus.BungeePlugin
+version: ${version}
+author: CodeCrafter47
+softDepends:
+  - RedisBungee
+  - ProtocolSupportBungee
+  - BungeeOnlineTime
+  - BungeePerms
+  - LuckPerms
+  - Clans
+  - ProxySuite
+  - PremiumVanish

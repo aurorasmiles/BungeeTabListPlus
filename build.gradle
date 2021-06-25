@@ -2,6 +2,7 @@
 ext {
     spigotVersion = '1.11-R0.1-SNAPSHOT'
     bungeeVersion = '1.15-SNAPSHOT'
+    velocityVersion = '1.1.8'
     spongeVersion = '7.0.0'
     dataApiVersion = '1.0.2-SNAPSHOT'
 }
@@ -47,6 +48,10 @@ subprojects {
 
         maven {
             url = 'https://oss.sonatype.org/content/repositories/snapshots'
+        }
+
+        maven {
+            url = 'https://nexus.velocitypowered.com/repository/maven-public/'
         }
     }
 

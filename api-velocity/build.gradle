@@ -1,0 +1,17 @@
+
+dependencies {
+    compileOnly "com.velocitypowered:velocity-api:${rootProject.ext.velocityVersion}"
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from(components.java)
+        }
+    }
+}
