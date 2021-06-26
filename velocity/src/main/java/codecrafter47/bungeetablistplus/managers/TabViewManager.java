@@ -26,6 +26,8 @@ import codecrafter47.bungeetablistplus.protocol.PacketHandler;
 import codecrafter47.bungeetablistplus.protocol.PacketListener;
 import codecrafter47.bungeetablistplus.util.ReflectionUtil;
 import codecrafter47.bungeetablistplus.version.ProtocolVersionProvider;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.viaversion.viaversion.api.connection.UserConnection;
@@ -42,7 +44,7 @@ import java.util.concurrent.Executor;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class TabViewManager implements Listener {
+public class TabViewManager {
 
     private final BungeeTabListPlus btlp;
     private final ProtocolVersionProvider protocolVersionProvider;
@@ -73,7 +75,7 @@ public class TabViewManager implements Listener {
         PlayerTabView tabView = playerTabViewMap.remove(player);
 
         if (null == tabView) {
-            throw new AssertionError("Received PlayerDisconnectEvent for non-existent player " + player.getName());
+            throw new AssertionError("Received PlayerDisconnectEvent for non-existent player " + player.getUsername());
         }
 
         tabView.deactivate();
@@ -81,18 +83,18 @@ public class TabViewManager implements Listener {
         return tabView;
     }
 
-    @EventHandler
-    public void onServerConnected(ServerSwitchEvent event) {
+    @Subscribe
+    public void onServerConnected(ServerPreConnectEvent event) {
         try {
-            ProxiedPlayer player = event.getPlayer();
+            Player player = event.getPlayer();
 
             PlayerTabView tabView = playerTabViewMap.get(player);
 
             if (tabView == null) {
-                throw new AssertionError("Received ServerSwitchEvent for non-existent player " + player.getName());
+                throw new AssertionError("Received ServerSwitchEvent for non-existent player " + player.getUsername());
             }
 
-            ServerConnection server = (ServerConnection) event.getPlayer().getServer();
+            ServerConnection server = event.getPlayer().getCurrentServer().get();
 
             ChannelWrapper wrapper = server.getCh();
 
@@ -109,11 +111,11 @@ public class TabViewManager implements Listener {
     }
 
     @Nullable
-    public TabView getTabView(ProxiedPlayer player) {
+    public TabView getTabView(Player player) {
         return playerTabViewMap.get(player);
     }
 
-    private PlayerTabView createTabView(ProxiedPlayer player) {
+    private PlayerTabView createTabView(Player player) {
         try {
             TabOverlayHandler tabOverlayHandler;
             PacketHandler packetHandler;

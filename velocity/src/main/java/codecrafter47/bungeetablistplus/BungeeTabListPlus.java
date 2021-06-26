@@ -38,11 +38,13 @@ import codecrafter47.bungeetablistplus.updater.UpdateNotifier;
 import codecrafter47.bungeetablistplus.util.ExceptionHandlingEventExecutor;
 import codecrafter47.bungeetablistplus.util.MatchingStringsCollection;
 import codecrafter47.bungeetablistplus.version.BungeeProtocolVersionProvider;
-import codecrafter47.bungeetablistplus.version.ProtocolSupportVersionProvider;
 import codecrafter47.bungeetablistplus.version.ProtocolVersionProvider;
 import codecrafter47.bungeetablistplus.version.ViaVersionProtocolVersionProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.inject.Inject;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import de.codecrafter47.data.bukkit.api.BukkitData;
 import de.codecrafter47.data.bungee.api.BungeeData;
@@ -63,7 +65,9 @@ import io.netty.util.concurrent.EventExecutorGroup;
 import io.netty.util.concurrent.MultithreadEventExecutorGroup;
 import lombok.Getter;
 import lombok.val;
+import net.kyori.text.format.TextColor;
 import org.bstats.bungeecord.Metrics;
+import org.slf4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.error.YAMLException;
 
@@ -79,7 +83,6 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -88,6 +91,7 @@ import java.util.zip.ZipInputStream;
  *
  * @author Florian Stober
  */
+@Plugin(id = "BungeeTabListPlus")
 public class BungeeTabListPlus {
 
     /**
@@ -96,6 +100,13 @@ public class BungeeTabListPlus {
     private static BungeeTabListPlus INSTANCE;
     @Getter
     private final Plugin plugin;
+
+    @Getter
+    private final ProxyServer server;
+    @Getter
+    private final Logger logger;
+    @Getter
+    private final Path dataDirectory;
 
     public PlayerProvider playerProvider;
     @Getter
@@ -117,8 +128,12 @@ public class BungeeTabListPlus {
     private PlayerPlaceholderResolver playerPlaceholderResolver;
     private API api;
 
-    public BungeeTabListPlus(Plugin plugin) {
+    @Inject
+    public BungeeTabListPlus(Plugin plugin, ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
         this.plugin = plugin;
+        this.server = server;
+        this.logger = logger;
+        this.dataDirectory = dataDirectory;
     }
 
     /**
@@ -129,7 +144,7 @@ public class BungeeTabListPlus {
      */
     public static BungeeTabListPlus getInstance(Plugin plugin) {
         if (INSTANCE == null) {
-            INSTANCE = new BungeeTabListPlus(plugin);
+            INSTANCE = new BungeeTabListPlus(plugin, getInstance().server, getInstance().getLogger(), getInstance().getDataDirectory());
         }
         return INSTANCE;
     }
@@ -173,22 +188,6 @@ public class BungeeTabListPlus {
     private transient boolean scheduledSoftReload;
 
     public void onLoad() {
-        if (!plugin.getDataFolder().exists()) {
-            plugin.getDataFolder().mkdirs();
-        }
-
-        try {
-            Class.forName("net.md_5.bungee.api.Title");
-        } catch (ClassNotFoundException ex) {
-            throw new RuntimeException("You need to run at least BungeeCord version #1110");
-        }
-
-        try {
-            Connection.class.getMethod("isConnected");
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException("You need to run at least BungeeCord version #1110");
-        }
-
         INSTANCE = this;
 
         Executor executor = (task) -> ProxyServer.getInstance().getScheduler().runAsync(getPlugin(), task);
@@ -201,9 +200,7 @@ public class BungeeTabListPlus {
         };
         mainThreadExecutor = new ExceptionHandlingEventExecutor(null, executor, getLogger());
 
-        if (plugin.getProxy().getPluginManager().getPlugin("ProtocolSupportBungee") != null) {
-            protocolVersionProvider = new ProtocolSupportVersionProvider();
-        } else if (plugin.getProxy().getPluginManager().getPlugin("ViaVersion") != null) {
+        if (getServer().getPluginManager().getPlugin("ViaVersion").isPresent()) {
             protocolVersionProvider = new ViaVersionProtocolVersionProvider();
         } else {
             protocolVersionProvider = new BungeeProtocolVersionProvider();
@@ -211,12 +208,12 @@ public class BungeeTabListPlus {
 
         this.tabViewManager = new TabViewManager(this, protocolVersionProvider);
 
-        File headsFolder = new File(plugin.getDataFolder(), "heads");
+        File headsFolder = new File(getDataDirectory().toString(), "heads");
         extractDefaultIcons(headsFolder);
 
         iconManager = new DefaultIconManager(asyncExecutor, mainThreadExecutor, headsFolder.toPath(), getLogger());
 
-        cache = Cache.load(new File(plugin.getDataFolder(), "cache.dat"));
+        cache = Cache.load(new File(getDataDirectory().toString(), "cache.dat"));
 
         serverPlaceholderResolver = new ServerPlaceholderResolver(cache);
         playerPlaceholderResolver = new PlayerPlaceholderResolver(serverPlaceholderResolver, cache);
@@ -228,7 +225,7 @@ public class BungeeTabListPlus {
             field.setAccessible(true);
             field.set(null, api);
         } catch (NoSuchFieldException | IllegalAccessException ex) {
-            getLogger().log(Level.SEVERE, "Failed to initialize API", ex);
+            getLogger().error("Failed to initialize API", ex);
         }
     }
 
@@ -267,16 +264,11 @@ public class BungeeTabListPlus {
         fakePlayerManagerImpl = new FakePlayerManagerImpl(plugin, iconManager, mainThreadExecutor);
 
         List<PlayerProvider> playerProviders = new ArrayList<>();
-        if (plugin.getProxy().getPluginManager().getPlugin("RedisBungee") != null) {
-            redisPlayerManager = new RedisPlayerManager(velocityPlayerProvider, this, getLogger());
-            playerProviders.add(redisPlayerManager);
-            plugin.getLogger().info("Hooked RedisBungee");
-        }
         playerProviders.add(velocityPlayerProvider);
         playerProviders.add(fakePlayerManagerImpl);
         this.playerProvider = new JoinedPlayerProvider(playerProviders);
 
-        plugin.getProxy().registerChannel(BridgeProtocolConstants.CHANNEL);
+        getServer().getChannelRegistrar().register(BridgeProtocolConstants.CHANNEL);
         bukkitBridge = new BukkitBridge(asyncExecutor, mainThreadExecutor, playerPlaceholderResolver, serverPlaceholderResolver, getPlugin(), getLogger(), velocityPlayerProvider, this, cache);
         serverStateManager = new ServerStateManager(config, plugin);
         dataManager = new DataManager(api, this.getPlugin(), this.getLogger(), velocityPlayerProvider, mainThreadExecutor, hiddenPlayersManager, serverStateManager, bukkitBridge);
@@ -284,10 +276,10 @@ public class BungeeTabListPlus {
         updateExcludedAndHiddenServerLists();
 
         // register commands and update Notifier
-        ProxyServer.getInstance().getPluginManager().registerCommand(
+        ProxyServer.getPluginManager().registerCommand(
                 plugin,
                 new CommandBungeeTabListPlus());
-        ProxyServer.getInstance().getScheduler().schedule(plugin,
+        ProxyServer.getScheduler().schedule(plugin,
                 new UpdateNotifier(this), 15, 15, TimeUnit.MINUTES);
 
         // Start metrics
@@ -296,14 +288,14 @@ public class BungeeTabListPlus {
         // Load updateCheck thread
         if (config.checkForUpdates) {
             updateChecker = new UpdateChecker(plugin);
-            plugin.getLogger().info("Starting UpdateChecker Task");
-            plugin.getProxy().getScheduler().schedule(plugin, updateChecker, 0,
+            getLogger().info("Starting UpdateChecker Task");
+            getServer().getScheduler().schedule(plugin, updateChecker, 0,
                     UpdateChecker.interval, TimeUnit.MINUTES).getId();
         }
 
-        int[] serversHash = {getProxy().getServers().hashCode()};
-        getProxy().getScheduler().schedule(plugin, () -> {
-            int hash = getProxy().getServers().hashCode();
+        int[] serversHash = {getServer().getAllServers().hashCode()};
+        getServer().getScheduler().schedule(plugin, () -> {
+            int hash = getServer().getAllServers().hashCode();
             if (hash != serversHash[0]) {
                 serversHash[0] = hash;
                 scheduleSoftReload();
@@ -330,7 +322,7 @@ public class BungeeTabListPlus {
 
         updateTimeZoneAndGlobalCustomPlaceholders();
 
-        Path tabLists = getPlugin().getDataFolder().toPath().resolve("tabLists");
+        Path tabLists = getDataDirectory().resolve("tabLists");
         if (!Files.exists(tabLists)) {
             try {
                 Files.createDirectories(tabLists);
@@ -341,12 +333,12 @@ public class BungeeTabListPlus {
             try {
                 Files.copy(getClass().getClassLoader().getResourceAsStream("default.yml"), tabLists.resolve("default.yml"));
             } catch (IOException e) {
-                plugin.getLogger().log(Level.WARNING, "Failed to save default config.", e);
+                getLogger().warn("Failed to save default config.", e);
             }
         }
         configTabOverlayManager.reloadConfigs(ImmutableSet.of(tabLists));
 
-        ProxyServer.getInstance().getPluginManager().registerListener(plugin, new TabListListener(this));
+        ProxyServer.getPluginManager().registerListener(plugin, new TabListListener(this));
     }
 
     private void updateTimeZoneAndGlobalCustomPlaceholders() {
@@ -390,28 +382,28 @@ public class BungeeTabListPlus {
                 while ((entry = zipInputStream.getNextEntry()) != null) {
                     if (!entry.isDirectory() && entry.getName().startsWith("heads/")) {
                         try {
-                            File targetFile = new File(plugin.getDataFolder(), entry.getName());
+                            File targetFile = new File(getDataDirectory().toString(), entry.getName());
                             targetFile.getParentFile().mkdirs();
                             if (!targetFile.exists()) {
                                 Files.copy(zipInputStream, targetFile.toPath());
                                 getLogger().info("Extracted " + entry.getName());
                             }
                         } catch (IOException ex) {
-                            getLogger().log(Level.SEVERE, "Failed to extract file " + entry.getName(), ex);
+                            getLogger().error("Failed to extract file " + entry.getName(), ex);
                         }
                     }
                 }
 
                 zipInputStream.close();
             } catch (IOException ex) {
-                getLogger().log(Level.SEVERE, "Error extracting files", ex);
+                getLogger().error("Error extracting files", ex);
             }
         }
     }
 
     private boolean readMainConfig() {
         try {
-            File file = new File(plugin.getDataFolder(), "config.yml");
+            File file = new File(getDataDirectory().toString(), "config.yml");
             if (!file.exists()) {
                 config = new MainConfig();
                 BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
@@ -422,7 +414,7 @@ public class BungeeTabListPlus {
                 ErrorHandler errorHandler = ErrorHandler.get();
                 ErrorHandler.set(null);
                 if (!errorHandler.getEntries().isEmpty()) {
-                    plugin.getLogger().log(Level.WARNING, errorHandler.formatErrors(file.getName()));
+                    getLogger().warn(errorHandler.formatErrors(file.getName()));
                 }
                 if (config.needWrite) {
                     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8));
@@ -430,7 +422,7 @@ public class BungeeTabListPlus {
                 }
             }
         } catch (IOException | YAMLException ex) {
-            plugin.getLogger().log(Level.WARNING, "Unable to load config.yml", ex);
+            getLogger().warn("Unable to load config.yml", ex);
             return true;
         }
         return false;
@@ -448,13 +440,13 @@ public class BungeeTabListPlus {
         fakePlayerManagerImpl.removeConfigFakePlayers();
 
         if (readMainConfig()) {
-            plugin.getLogger().log(Level.WARNING, "Unable to reload Config");
+            getLogger().warn("Unable to reload Config");
             return false;
         } else {
             updateExcludedAndHiddenServerLists();
             updateTimeZoneAndGlobalCustomPlaceholders();
 
-            Path tabLists = getPlugin().getDataFolder().toPath().resolve("tabLists");
+            Path tabLists = getDataDirectory().resolve("tabLists");
             configTabOverlayManager.reloadConfigs(ImmutableSet.of(tabLists));
 
             fakePlayerManagerImpl.reload();
@@ -491,7 +483,7 @@ public class BungeeTabListPlus {
     @Deprecated
     public final void failIfNotMainThread() {
         if (!mainThreadExecutor.inEventLoop()) {
-            getLogger().log(Level.SEVERE, "Not in main thread", new IllegalStateException("Not in main thread"));
+            getLogger().error("Not in main thread", new IllegalStateException("Not in main thread"));
         }
     }
 
@@ -520,19 +512,11 @@ public class BungeeTabListPlus {
     }
 
     public void reportError(Throwable th) {
-        plugin.getLogger().log(Level.SEVERE,
-                ChatColor.RED + "An internal error occurred! Please send the "
+        getLogger().error(
+                TextColor.RED + "An internal error occurred! Please send the "
                         + "following StackTrace to the developer in order to help"
                         + " resolving the problem",
                 th);
-    }
-
-    public Logger getLogger() {
-        return plugin.getLogger();
-    }
-
-    public ProxyServer getProxy() {
-        return plugin.getProxy();
     }
 
     private final class MyPlatform implements Platform {

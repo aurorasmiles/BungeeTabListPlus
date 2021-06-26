@@ -53,4 +53,12 @@ public class VelocityPlugin {
             }
         }
     }
+
+    public Logger getLogger() {
+        return logger;
+    }
+
+    public ProxyServer getServer() {
+        return server;
+    }
 }

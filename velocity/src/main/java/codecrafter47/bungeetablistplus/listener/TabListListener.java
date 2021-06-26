@@ -20,13 +20,18 @@ import codecrafter47.bungeetablistplus.BungeeTabListPlus;
 import codecrafter47.bungeetablistplus.player.VelocityPlayer;
 import codecrafter47.bungeetablistplus.tablist.ExcludedServersTabOverlayProvider;
 import com.sun.security.ntlm.Server;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyReloadEvent;
+import com.velocitypowered.api.proxy.ServerConnection;
 import com.viaversion.viaversion.api.connection.UserConnection;
 import de.codecrafter47.taboverlay.TabView;
 import de.codecrafter47.taboverlay.config.platform.EventListener;
 
-public class TabListListener implements Listener {
+import java.util.Optional;
+
+public class TabListListener {
 
     private final BungeeTabListPlus btlp;
 
@@ -34,7 +39,7 @@ public class TabListListener implements Listener {
         this.btlp = btlp;
     }
 
-    @EventHandler(priority = EventPriority.LOWEST)
+    @Subscribe
     public void onPlayerJoin(PostLoginEvent e) {
         try {
             VelocityPlayer player = btlp.getVelocityPlayerProvider().onPlayerConnected(e.getPlayer());
@@ -48,8 +53,8 @@ public class TabListListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST)
-    public void onPlayerDisconnect(PlayerDisconnectEvent e) {
+    @Subscribe
+    public void onPlayerDisconnect(DisconnectEvent e) {
         try {
             TabView tabView = btlp.getTabViewManager().onPlayerDisconnect(e.getPlayer());
             tabView.deactivate();
@@ -59,8 +64,8 @@ public class TabListListener implements Listener {
             btlp.getVelocityPlayerProvider().onPlayerDisconnected(e.getPlayer());
 
             // hack to revert changes from https://github.com/SpigotMC/BungeeCord/commit/830f18a35725f637d623594eaaad50b566376e59
-            Server server = e.getPlayer().getServer();
-            if (server != null) {
+            Optional<ServerConnection> server = e.getPlayer().getCurrentServer();
+            if (server.isPresent()) {
                 server.disconnect("Quitting");
             }
             ((UserConnection) e.getPlayer()).setServer(null);
@@ -69,7 +74,7 @@ public class TabListListener implements Listener {
         }
     }
 
-    @EventHandler
+    @Subscribe
     public void onReload(ProxyReloadEvent event) {
         btlp.reload();
     }

@@ -31,6 +31,7 @@ import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.imaginarycode.minecraft.redisbungee.RedisBungee;
 import com.imaginarycode.minecraft.redisbungee.events.PubSubMessageEvent;
+import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.proxy.ProxyServer;
 import de.codecrafter47.data.api.DataCache;
 import de.codecrafter47.data.api.DataKey;
@@ -53,7 +54,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class RedisPlayerManager implements Listener, PlayerProvider {
+public class RedisPlayerManager implements PlayerProvider {
 
     private static final TypeAdapterRegistry typeRegistry = TypeAdapterRegistry.of(
             TypeAdapterRegistry.DEFAULT_TYPE_ADAPTERS,
@@ -114,7 +115,7 @@ public class RedisPlayerManager implements Listener, PlayerProvider {
         return byUUID.values();
     }
 
-    @EventHandler
+    @Subscribe
     @SuppressWarnings("unchecked")
     public void onRedisMessage(PubSubMessageEvent event) {
         String channel = event.getChannel();

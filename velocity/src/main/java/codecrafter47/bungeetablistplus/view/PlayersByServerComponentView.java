@@ -41,7 +41,12 @@ import de.codecrafter47.taboverlay.config.view.components.ContainerComponentView
 import de.codecrafter47.taboverlay.config.view.components.ListComponentView;
 import de.codecrafter47.taboverlay.config.view.components.PartitionedPlayersView;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 public class PlayersByServerComponentView extends PartitionedPlayersView {
@@ -73,7 +78,7 @@ public class PlayersByServerComponentView extends PartitionedPlayersView {
         super.onActivation();
 
         if (showServers == PlayersByServerComponentConfiguration.ServerOptions.ALL) {
-            servers = new ArrayList<>(ProxyServer.getInstance().getServers().keySet());
+            servers = BungeeTabListPlus.getInstance().getServer().getAllServers();
             for (String serverName : servers) {
                 if (hiddenServers.contains(serverName)) {
                     continue;
@@ -81,7 +86,7 @@ public class PlayersByServerComponentView extends PartitionedPlayersView {
                 addPersistentSection(mergeSections.apply(serverName), false);
             }
         } else if (showServers == PlayersByServerComponentConfiguration.ServerOptions.ONLINE) {
-            servers = new ArrayList<>(ProxyServer.getInstance().getServers().keySet());
+            servers = BungeeTabListPlus.getInstance().getServer().getAllServers();
             for (String serverName : servers) {
                 serverName = mergeSections.apply(serverName);
                 if (hiddenServers.contains(serverName)) {

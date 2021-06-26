@@ -17,6 +17,7 @@
 
 package codecrafter47.bungeetablistplus.util;
 
+import com.velocitypowered.api.proxy.Player;
 import com.viaversion.viaversion.api.connection.UserConnection;
 import de.codecrafter47.taboverlay.Icon;
 import de.codecrafter47.taboverlay.ProfileProperty;

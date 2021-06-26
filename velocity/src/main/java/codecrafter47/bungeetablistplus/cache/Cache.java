@@ -20,9 +20,18 @@ package codecrafter47.bungeetablistplus.cache;
 import codecrafter47.bungeetablistplus.BungeeTabListPlus;
 import com.velocitypowered.api.proxy.ProxyServer;
 
-import java.io.*;
-import java.util.*;
-import java.util.logging.Level;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -49,7 +58,7 @@ public class Cache implements Serializable {
     private Stream<String> getServerNames() {
         for (int i = 0; i < 3; i++) {
             try {
-                return ProxyServer.getInstance().getServers().keySet()
+                return ProxyServer.getAllServers().keySet()
                         .stream()
                         .filter(Objects::nonNull);
             } catch (Throwable ignored) {
@@ -103,7 +112,7 @@ public class Cache implements Serializable {
             oos.writeObject(this);
             oos.flush();
         } catch (Throwable th) {
-            BungeeTabListPlus.getInstance().getLogger().log(Level.SEVERE, "Failed to write file: " + th.getMessage(), th);
+            BungeeTabListPlus.getInstance().getLogger().error("Failed to write file: " + th.getMessage(), th);
         }
     }
 }

@@ -31,6 +31,8 @@ import codecrafter47.bungeetablistplus.player.VelocityPlayer;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
 import com.sun.security.ntlm.Server;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PluginMessageEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
@@ -44,6 +46,7 @@ import de.codecrafter47.data.api.DataKey;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import org.slf4j.Logger;
 
 
 import javax.annotation.Nonnull;
@@ -51,10 +54,9 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
-public class BukkitBridge implements Listener {
+
+public class BukkitBridge {
 
     private static final TypeAdapterRegistry typeAdapterRegistry = TypeAdapterRegistry.DEFAULT_TYPE_ADAPTERS;
     private static final RateLimitedExecutor rlExecutor = new RateLimitedExecutor(5000);
@@ -84,18 +86,18 @@ public class BukkitBridge implements Listener {
         this.velocityPlayerProvider = velocityPlayerProvider;
         this.btlp = btlp;
         this.cache = cache;
-        ProxyServer.getInstance().getPluginManager().registerListener(plugin, this);
+        ProxyServer.getPluginManager().registerListener(plugin, this);
         asyncExecutor.scheduleWithFixedDelay(this::sendIntroducePackets, 100, 100, TimeUnit.MILLISECONDS);
         asyncExecutor.scheduleWithFixedDelay(this::resendUnconfirmedMessages, 2, 2, TimeUnit.SECONDS);
         asyncExecutor.scheduleWithFixedDelay(this::removeObsoleteServerConnections, 5, 5, TimeUnit.SECONDS);
     }
 
-    @EventHandler
+    @Subscribe
     public void onPlayerConnect(PostLoginEvent event) {
         playerPlayerConnectionInfoMap.put(event.getPlayer(), new PlayerConnectionInfo());
     }
 
-    @EventHandler
+    @Subscribe
     public void onServerChange(ServerConnectedEvent event) {
         PlayerConnectionInfo previous = playerPlayerConnectionInfoMap.put(event.getPlayer(), new PlayerConnectionInfo());
         if (previous != null) {
@@ -109,15 +111,15 @@ public class BukkitBridge implements Listener {
         }
     }
 
-    @EventHandler
-    public void onPlayerDisconnect(PlayerDisconnectEvent event) {
+    @Subscribe
+    public void onPlayerDisconnect(DisconnectEvent event) {
         playerPlayerConnectionInfoMap.remove(event.getPlayer());
     }
 
-    @EventHandler
+    @Subscribe
     public void onPluginMessage(PluginMessageEvent event) {
         if (event.getTag().equals(BridgeProtocolConstants.CHANNEL)) {
-            if (event.getReceiver() instanceof ProxiedPlayer && event.getSender() instanceof Server) {
+            if (event.getReceiver() instanceof Player && event.getSender() instanceof Server) {
 
                 Player player = (Player) event.getReceiver();
                 Server server = (Server) event.getSender();

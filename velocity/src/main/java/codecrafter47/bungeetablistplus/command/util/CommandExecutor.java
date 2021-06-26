@@ -18,12 +18,9 @@
 package codecrafter47.bungeetablistplus.command.util;
 
 import codecrafter47.util.chat.ChatUtil;
-import net.md_5.bungee.api.CommandSender;
-import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.plugin.Command;
-import net.md_5.bungee.api.plugin.TabExecutor;
-import net.md_5.bungee.util.CaseInsensitiveMap;
+import com.velocitypowered.api.command.Command;
+import com.velocitypowered.api.proxy.ProxyServer;
+
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,7 +28,7 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class CommandExecutor extends Command implements TabExecutor {
+public class CommandExecutor implements TabExecutor, Command {
     private final Map<String, Command> subCommands = new CaseInsensitiveMap<>();
     private Consumer<CommandSender> defaultAction = null;
 

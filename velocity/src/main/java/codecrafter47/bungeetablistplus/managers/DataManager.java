@@ -36,6 +36,7 @@ import de.codecrafter47.taboverlay.util.Unchecked;
 import io.netty.util.concurrent.EventExecutor;
 import lombok.Getter;
 import lombok.Setter;
+import org.slf4j.Logger;
 
 
 import javax.annotation.Nonnull;
@@ -45,9 +46,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
-public class DataManager implements Listener {
+
+public class DataManager {
 
     private final API api;
     private final EventExecutor mainThreadExecutor;

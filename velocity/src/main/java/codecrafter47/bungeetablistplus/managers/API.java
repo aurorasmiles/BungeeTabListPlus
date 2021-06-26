@@ -32,6 +32,7 @@ import com.velocitypowered.api.proxy.Player;
 import de.codecrafter47.data.api.DataKey;
 import de.codecrafter47.taboverlay.TabView;
 import de.codecrafter47.taboverlay.config.icon.IconManager;
+import org.slf4j.Logger;
 
 import javax.annotation.Nonnull;
 import java.awt.image.BufferedImage;
@@ -40,7 +41,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+
 
 public class API extends BungeeTabListPlusAPI {
 
